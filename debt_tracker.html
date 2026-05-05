@@ -1,0 +1,1187 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Трекер кредитів — Євген</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Unbounded:wght@400;700;900&display=swap');
+
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #12121a;
+    --bg3: #1a1a26;
+    --border: #2a2a40;
+    --text: #e8e8f0;
+    --muted: #6b6b8a;
+    --accent: #7c3aed;
+    --accent2: #a855f7;
+    --green: #10b981;
+    --green2: #34d399;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --privat: #10b981;
+    --mono: #6366f1;
+    --pumb: #ef4444;
+    --font-head: 'Unbounded', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(124,58,237,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,58,237,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 480px; margin: 0 auto; padding: 16px 16px 120px; }
+
+  /* Header */
+  .header { text-align: center; padding: 24px 0 20px; }
+  .header-title {
+    font-family: var(--font-head);
+    font-size: 18px;
+    font-weight: 900;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #a855f7, #10b981);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .header-sub { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 0.1em; text-transform: uppercase; }
+
+  /* Total debt banner */
+  .total-banner {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .total-banner::after {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(124,58,237,0.15), transparent 70%);
+    pointer-events: none;
+  }
+  .total-label { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+  .total-amount {
+    font-family: var(--font-head);
+    font-size: 36px;
+    font-weight: 900;
+    color: var(--red);
+    letter-spacing: -1px;
+    transition: color 0.5s;
+  }
+  .total-amount.low { color: var(--amber); }
+  .total-amount.zero { color: var(--green); }
+  .total-meta { font-size: 11px; color: var(--muted); margin-top: 6px; }
+  .total-freed { font-size: 13px; color: var(--green); margin-top: 4px; font-weight: 700; }
+
+  /* Overall progress */
+  .overall-bar {
+    height: 6px;
+    background: var(--bg3);
+    border-radius: 99px;
+    margin-top: 12px;
+    overflow: hidden;
+  }
+  .overall-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--green));
+    border-radius: 99px;
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 16px;
+    gap: 4px;
+  }
+  .tab {
+    flex: 1;
+    padding: 8px 4px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    border-radius: 8px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .tab.active { color: var(--text); }
+  .tab[data-tab="cards"].active { background: rgba(16,185,129,0.15); color: var(--green2); }
+  .tab[data-tab="log"].active { background: rgba(124,58,237,0.15); color: var(--accent2); }
+  .tab[data-tab="plan"].active { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .tab[data-tab="budget"].active { background: rgba(99,102,241,0.15); color: #818cf8; }
+
+  /* Section */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* Card */
+  .credit-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .credit-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .credit-card.privat::before { background: var(--privat); }
+  .credit-card.mono::before { background: var(--mono); }
+  .credit-card.pumb::before { background: var(--pumb); }
+
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .card-name {
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .bank-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .bank-dot.privat { background: var(--privat); box-shadow: 0 0 6px var(--privat); }
+  .bank-dot.mono { background: var(--mono); box-shadow: 0 0 6px var(--mono); }
+  .bank-dot.pumb { background: var(--pumb); box-shadow: 0 0 6px var(--pumb); }
+
+  .card-rate { font-size: 10px; color: var(--muted); background: var(--bg3); padding: 3px 8px; border-radius: 99px; }
+
+  .debt-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .debt-label { font-size: 11px; color: var(--muted); }
+  .debt-val { font-family: var(--font-head); font-size: 22px; font-weight: 700; }
+  .debt-val.privat { color: var(--privat); }
+  .debt-val.mono { color: var(--mono); }
+  .debt-val.pumb { color: var(--pumb); }
+  .debt-val.zero { color: var(--green); font-size: 18px; }
+
+  .progress-bar { height: 4px; background: var(--bg3); border-radius: 99px; overflow: hidden; margin-bottom: 8px; }
+  .progress-fill { height: 100%; border-radius: 99px; transition: width 0.6s cubic-bezier(0.4,0,0.2,1); }
+  .progress-fill.privat { background: var(--privat); }
+  .progress-fill.mono { background: var(--mono); }
+  .progress-fill.pumb { background: var(--pumb); }
+
+  .card-meta { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 12px; }
+  .card-paid { color: var(--green2); }
+
+  .card-actions { display: flex; gap: 8px; }
+  .btn-pay {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .btn-pay.income { background: rgba(16,185,129,0.15); color: var(--green2); border: 1px solid rgba(16,185,129,0.3); }
+  .btn-pay.income:hover { background: rgba(16,185,129,0.25); }
+  .btn-pay.expense { background: rgba(239,68,68,0.15); color: #fca5a5; border: 1px solid rgba(239,68,68,0.3); }
+  .btn-pay.expense:hover { background: rgba(239,68,68,0.25); }
+  .btn-pay.payoff { background: rgba(124,58,237,0.15); color: var(--accent2); border: 1px solid rgba(124,58,237,0.3); }
+  .btn-pay.payoff:hover { background: rgba(124,58,237,0.25); }
+
+  .urgent-badge {
+    display: inline-block;
+    background: rgba(239,68,68,0.2);
+    color: var(--red);
+    border: 1px solid rgba(239,68,68,0.4);
+    border-radius: 99px;
+    font-size: 10px;
+    padding: 2px 8px;
+    margin-bottom: 8px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.6} }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 100;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px 32px;
+    width: 100%;
+    max-width: 480px;
+    animation: slideUp 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  @keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+
+  .modal-title {
+    font-family: var(--font-head);
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .modal-close {
+    margin-left: auto;
+    background: var(--bg3);
+    border: none;
+    color: var(--muted);
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .form-group { margin-bottom: 16px; }
+  .form-label { font-size: 11px; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; display: block; }
+  .form-input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 16px;
+    font-weight: 700;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-input:focus { border-color: var(--accent); }
+  .form-select {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+  .form-textarea {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    resize: none;
+    height: 72px;
+  }
+
+  .btn-confirm {
+    width: 100%;
+    padding: 14px;
+    border-radius: 12px;
+    border: none;
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    transition: all 0.2s;
+    margin-top: 4px;
+  }
+  .btn-confirm.green { background: var(--green); color: #000; }
+  .btn-confirm.green:hover { background: var(--green2); }
+  .btn-confirm.red { background: var(--red); color: #fff; }
+  .btn-confirm.red:hover { opacity: 0.9; }
+  .btn-confirm.purple { background: var(--accent); color: #fff; }
+  .btn-confirm.purple:hover { background: var(--accent2); }
+
+  /* Log */
+  .log-entry {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+  .log-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .log-body { flex: 1; min-width: 0; }
+  .log-desc { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .log-meta { font-size: 10px; color: var(--muted); margin-top: 2px; }
+  .log-amount { font-family: var(--font-head); font-size: 15px; font-weight: 700; white-space: nowrap; }
+  .log-amount.pos { color: var(--green2); }
+  .log-amount.neg { color: var(--red); }
+  .log-amount.payoff { color: var(--accent2); }
+
+  .log-bank-tag {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 99px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .log-bank-tag.privat { background: rgba(16,185,129,0.2); color: var(--privat); }
+  .log-bank-tag.mono { background: rgba(99,102,241,0.2); color: #818cf8; }
+  .log-bank-tag.pumb { background: rgba(239,68,68,0.2); color: var(--pumb); }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 13px; }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+  /* Plan */
+  .plan-item {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 10px;
+  }
+  .plan-step { display: flex; gap: 12px; align-items: flex-start; }
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head);
+    font-size: 12px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .step-num.done { background: rgba(16,185,129,0.2); color: var(--green2); }
+  .step-num.active { background: rgba(245,158,11,0.2); color: var(--amber); }
+  .step-num.future { background: var(--bg3); color: var(--muted); }
+
+  .step-content { flex: 1; }
+  .step-title { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .step-detail { font-size: 11px; color: var(--muted); line-height: 1.5; }
+  .step-amount { font-family: var(--font-head); font-size: 15px; font-weight: 700; margin-top: 6px; }
+
+  .plan-editable {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text);
+    width: 100%;
+    outline: none;
+    margin-top: 8px;
+  }
+  .edit-label { font-size: 10px; color: var(--muted); margin-top: 8px; margin-bottom: 4px; display: block; letter-spacing: 0.08em; text-transform: uppercase; }
+  .plan-save-btn {
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px;
+    background: rgba(124,58,237,0.15);
+    border: 1px solid rgba(124,58,237,0.3);
+    border-radius: 10px;
+    color: var(--accent2);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .plan-save-btn:hover { background: rgba(124,58,237,0.25); }
+
+  /* Budget */
+  .budget-item {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .budget-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .budget-name { font-size: 13px; font-weight: 500; }
+  .budget-val { font-family: var(--font-head); font-size: 15px; font-weight: 700; }
+  .budget-bar-bg { height: 3px; background: var(--bg3); border-radius: 99px; overflow: hidden; }
+  .budget-bar-fill { height: 100%; border-radius: 99px; transition: width 0.6s; }
+
+  .budget-total {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .budget-total-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .budget-total-val { font-family: var(--font-head); font-size: 28px; font-weight: 700; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 200;
+    transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+    white-space: nowrap;
+    max-width: 90vw;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.success { border-color: rgba(16,185,129,0.5); color: var(--green2); }
+  .toast.error { border-color: rgba(239,68,68,0.5); color: var(--red); }
+
+  /* Celebration */
+  .celebrate {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.9);
+    flex-direction: column;
+    text-align: center;
+    padding: 40px;
+  }
+  .celebrate.show { display: flex; }
+  .celebrate-title { font-family: var(--font-head); font-size: 28px; font-weight: 900; color: var(--green); margin-bottom: 12px; }
+  .celebrate-sub { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 32px; }
+  .celebrate-close {
+    padding: 14px 32px;
+    background: var(--green);
+    border: none;
+    border-radius: 12px;
+    color: #000;
+    font-family: var(--font-head);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .section-head { font-family: var(--font-head); font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 12px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  /* Data controls */
+  .data-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .data-btn {
+    flex: 1;
+    padding: 10px 8px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .data-btn.export { background: rgba(16,185,129,0.15); color: var(--green2); border: 1px solid rgba(16,185,129,0.3); }
+  .data-btn.export:hover { background: rgba(16,185,129,0.25); }
+  .data-btn.import { background: rgba(99,102,241,0.15); color: #818cf8; border: 1px solid rgba(99,102,241,0.3); }
+  .data-btn.import:hover { background: rgba(99,102,241,0.25); }
+  .data-btn.reset { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+  .data-btn.reset:hover { background: rgba(239,68,68,0.2); }
+
+  /* Custom categories */
+  .cat-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .cat-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 99px;
+    padding: 5px 10px 5px 12px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+  }
+  .cat-chip-del {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.2s;
+  }
+  .cat-chip-del:hover { color: var(--red); }
+  .cat-chip.default { opacity: 0.6; }
+  .cat-chip.default .cat-chip-del { display: none; }
+
+  .cat-add-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .cat-input {
+    flex: 1;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+  }
+  .cat-input:focus { border-color: var(--accent); }
+  .emoji-input {
+    width: 56px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    color: var(--text);
+    font-size: 18px;
+    text-align: center;
+    outline: none;
+  }
+  .cat-add-btn {
+    padding: 10px 14px;
+    background: rgba(124,58,237,0.2);
+    border: 1px solid rgba(124,58,237,0.4);
+    border-radius: 10px;
+    color: var(--accent2);
+    font-family: var(--font-mono);
+    font-size: 18px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .cat-add-btn:hover { background: rgba(124,58,237,0.35); }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px;
+    border-radius: 6px;
+    transition: color 0.2s;
+    flex-shrink: 0;
+  }
+  .delete-btn:hover { color: var(--red); }
+
+  .month-income-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="header">
+    <div class="header-title">DEBT KILLER</div>
+    <div class="header-sub">Трекер кредитів — Євген</div>
+  </div>
+
+  <!-- Total -->
+  <div class="total-banner">
+    <div class="total-label">Загальний борг</div>
+    <div class="total-amount" id="totalDebt">0 ₴</div>
+    <div class="total-meta">Початково: <span id="initialDebt">0 ₴</span></div>
+    <div class="total-freed" id="freedAmount"></div>
+    <div class="overall-bar">
+      <div class="overall-fill" id="overallBar" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-tab="cards">Картки</button>
+    <button class="tab" data-tab="log">Журнал</button>
+    <button class="tab" data-tab="plan">План</button>
+    <button class="tab" data-tab="budget">Бюджет</button>
+    <button class="tab" data-tab="settings">⚙️</button>
+  </div>
+
+  <!-- CARDS TAB -->
+  <div class="section active" id="tab-cards">
+
+    <!-- Privat -->
+    <div class="credit-card privat" id="card-privat">
+      <div class="urgent-badge" id="urgentBadge">⚡ До 25 травня: внести 12 990 ₴</div>
+      <div class="card-top">
+        <div class="card-name"><div class="bank-dot privat"></div>ПриватБанк</div>
+        <div class="card-rate">3.5% / міс</div>
+      </div>
+      <div class="debt-row">
+        <div class="debt-label">Борг зараз</div>
+        <div class="debt-val privat" id="debt-privat">26 274 ₴</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill privat" id="bar-privat" style="width:0%"></div></div>
+      <div class="card-meta">
+        <span>Ліміт: 56 000 ₴</span>
+        <span class="card-paid">Погашено: <span id="paid-privat">0 ₴</span></span>
+      </div>
+      <div class="card-actions">
+        <button class="btn-pay income" onclick="openModal('income','privat')">+ Надходження</button>
+        <button class="btn-pay expense" onclick="openModal('expense','privat')">− Витрата</button>
+      </div>
+    </div>
+
+    <!-- Mono -->
+    <div class="credit-card mono" id="card-mono">
+      <div class="card-top">
+        <div class="card-name"><div class="bank-dot mono"></div>Монобанк</div>
+        <div class="card-rate">3.1% / міс</div>
+      </div>
+      <div class="debt-row">
+        <div class="debt-label">Борг зараз</div>
+        <div class="debt-val mono" id="debt-mono">29 960 ₴</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill mono" id="bar-mono" style="width:0%"></div></div>
+      <div class="card-meta">
+        <span>Ліміт: 30 000 ₴</span>
+        <span class="card-paid">Погашено: <span id="paid-mono">0 ₴</span></span>
+      </div>
+      <div class="card-actions">
+        <button class="btn-pay income" onclick="openModal('income','mono')">+ Надходження</button>
+        <button class="btn-pay expense" onclick="openModal('expense','mono')">− Витрата</button>
+      </div>
+    </div>
+
+    <!-- PUMB -->
+    <div class="credit-card pumb" id="card-pumb">
+      <div class="card-top">
+        <div class="card-name"><div class="bank-dot pumb"></div>ПУМБ</div>
+        <div class="card-rate">2.99% / міс</div>
+      </div>
+      <div class="debt-row">
+        <div class="debt-label">Борг зараз</div>
+        <div class="debt-val pumb" id="debt-pumb">11 294 ₴</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill pumb" id="bar-pumb" style="width:0%"></div></div>
+      <div class="card-meta">
+        <span>Ліміт: 20 000 ₴</span>
+        <span class="card-paid">Погашено: <span id="paid-pumb">0 ₴</span></span>
+      </div>
+      <div class="card-actions">
+        <button class="btn-pay income" onclick="openModal('income','pumb')">+ Надходження</button>
+        <button class="btn-pay expense" onclick="openModal('expense','pumb')">− Витрата</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- LOG TAB -->
+  <div class="section" id="tab-log">
+    <div class="section-head">Всі операції</div>
+    <div id="logList"><div class="empty-state"><div class="empty-icon">📋</div>Операцій ще немає. Записуй кожну витрату і надходження!</div></div>
+  </div>
+
+  <!-- PLAN TAB -->
+  <div class="section" id="tab-plan">
+    <div class="section-head">Жорсткий план</div>
+
+    <div class="plan-item">
+      <div class="plan-step">
+        <div class="step-num active" id="step1num">1</div>
+        <div class="step-content">
+          <div class="step-title" style="color:var(--red)">Травень — ТЕРМІНОВО</div>
+          <div class="step-detail">Закрити Приват + ПУМБ повністю. Внести 12 990 ₴ на Приват до 25 травня (пільговий).</div>
+          <div class="step-amount" style="color:var(--red)">Потрібно: 37 568 ₴</div>
+        </div>
+      </div>
+      <span class="edit-label">Твоя нотатка до кроку 1</span>
+      <textarea class="plan-editable" id="note1" placeholder="Наприклад: Зарплата 25 трав + репетиторство = буде 40к">Закрити Приват 26274 + ПУМБ 11294 = 37568 грн. Решта на Моно.</textarea>
+    </div>
+
+    <div class="plan-item">
+      <div class="plan-step">
+        <div class="step-num future" id="step2num">2</div>
+        <div class="step-content">
+          <div class="step-title" style="color:var(--amber)">Червень — Добити Моно</div>
+          <div class="step-detail">Весь вільний дохід (~45 000 ₴) кидаємо на Моно. Борг ~23 000 ₴ після травня.</div>
+          <div class="step-amount" style="color:var(--amber)">Залишок Моно: ~23 000 ₴</div>
+        </div>
+      </div>
+      <span class="edit-label">Твоя нотатка до кроку 2</span>
+      <textarea class="plan-editable" id="note2" placeholder="Додай свої думки...">Після закриття Моно — повністю вільний. Залишок ~22 000 грн — перший резерв.</textarea>
+    </div>
+
+    <div class="plan-item">
+      <div class="plan-step">
+        <div class="step-num future" id="step3num">3</div>
+        <div class="step-content">
+          <div class="step-title" style="color:var(--green)">Середина червня — СВОБОДА</div>
+          <div class="step-detail">Всі три кредити закриті. Будуй резервний фонд: 3 міс витрат = ~60 000 ₴.</div>
+          <div class="step-amount" style="color:var(--green)">Мета: 0 ₴ боргу</div>
+        </div>
+      </div>
+      <span class="edit-label">Плани після закриття кредитів</span>
+      <textarea class="plan-editable" id="note3" placeholder="Що зробиш першим після закриття?">Відкласти 3 місяці резерву. Більше не брати кредити на картках.</textarea>
+    </div>
+
+    <button class="plan-save-btn" onclick="savePlanNotes()">Зберегти нотатки</button>
+  </div>
+
+  <!-- BUDGET TAB -->
+  <div class="section" id="tab-budget">
+    <div class="section-head">Жорсткий бюджет / місяць</div>
+
+    <div class="month-income-row">
+      <span style="font-size:13px;color:var(--muted)">Дохід цього місяця</span>
+      <span id="monthIncome" style="font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--green)">0 ₴</span>
+    </div>
+
+    <div id="budgetItems"></div>
+
+    <div class="budget-total">
+      <div class="budget-total-label">Залишок на кредити цього місяця</div>
+      <div class="budget-total-val" id="budgetSurplus" style="color:var(--green)">0 ₴</div>
+    </div>
+
+    <div class="section-head" style="margin-top:8px">Редагувати ліміти</div>
+    <div id="budgetEditor"></div>
+    <button class="plan-save-btn" onclick="saveBudget()">Зберегти ліміти</button>
+  </div>
+
+  <!-- SETTINGS TAB -->
+  <div class="section" id="tab-settings">
+
+    <div class="section-head">Дані</div>
+    <div class="data-bar">
+      <button class="data-btn export" onclick="exportData()">💾 Зберегти JSON</button>
+      <button class="data-btn import" onclick="document.getElementById('importFile').click()">📂 Завантажити JSON</button>
+      <button class="data-btn reset" onclick="resetData()">🗑 Скинути</button>
+    </div>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:20px;line-height:1.6">
+      «Зберегти JSON» — скачує файл <code style="color:var(--accent2)">data.json</code> з усіма твоїми операціями. Зберігай його як резервну копію. «Завантажити JSON» — відновлює дані з файлу.
+    </div>
+
+    <div class="section-head">Категорії витрат</div>
+    <div id="catGrid" class="cat-grid"></div>
+    <div class="cat-add-row">
+      <input class="emoji-input" id="catEmoji" placeholder="😀" maxlength="2" value="📦">
+      <input class="cat-input" id="catName" placeholder="Назва категорії..." maxlength="30">
+      <button class="cat-add-btn" onclick="addCategory()">+</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">Стандартні категорії не можна видалити. Власні — можна.</div>
+
+  </div>
+
+</div>
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">
+      <span id="modalTitle">Операція</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Сума (₴)</label>
+      <input type="number" class="form-input" id="modalAmount" placeholder="0" inputmode="decimal">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Категорія</label>
+      <select class="form-select" id="modalCategory">
+        <option value="продукти">🛒 Продукти</option>
+        <option value="кафе">🍽️ Кафе / ресторан</option>
+        <option value="таксі">🚕 Таксі</option>
+        <option value="куріння">🚬 Куріння</option>
+        <option value="комуналка">🏠 Оренда / комуналка</option>
+        <option value="зв'язок">📱 Зв'язок / інтернет</option>
+        <option value="одяг">👕 Одяг</option>
+        <option value="ліки">💊 Аптека / медицина</option>
+        <option value="розваги">🎮 Розваги</option>
+        <option value="зарплата">💼 Зарплата</option>
+        <option value="репетиторство">📚 Репетиторство</option>
+        <option value="переказ">💸 Переказ</option>
+        <option value="інше">• Інше</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Коментар (необов'язково)</label>
+      <textarea class="form-textarea" id="modalComment" placeholder="Наприклад: АТБ, оплата рахунку..."></textarea>
+    </div>
+    <button class="btn-confirm" id="modalConfirm" onclick="confirmModal()">Підтвердити</button>
+  </div>
+</div>
+
+<!-- Celebration -->
+<div class="celebrate" id="celebrate">
+  <div class="celebrate-title" id="celebrateTitle">🎉</div>
+  <div class="celebrate-sub" id="celebrateSub"></div>
+  <button class="celebrate-close" onclick="document.getElementById('celebrate').classList.remove('show')">Чудово!</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+const INITIAL = { privat: 26274, mono: 29960, pumb: 11294 };
+const LIMITS = { privat: 56000, mono: 30000, pumb: 20000 };
+const BANK_LABELS = { privat: 'ПриватБанк', mono: 'Монобанк', pumb: 'ПУМБ' };
+
+const DEFAULT_CATS = [
+  { emoji: '🛒', name: 'Продукти', custom: false },
+  { emoji: '🍽️', name: 'Кафе / ресторан', custom: false },
+  { emoji: '🚕', name: 'Таксі', custom: false },
+  { emoji: '🚬', name: 'Куріння', custom: false },
+  { emoji: '🏠', name: 'Оренда / комуналка', custom: false },
+  { emoji: '📱', name: "Зв'язок / інтернет", custom: false },
+  { emoji: '👕', name: 'Одяг', custom: false },
+  { emoji: '💊', name: 'Аптека / медицина', custom: false },
+  { emoji: '🎮', name: 'Розваги', custom: false },
+  { emoji: '💼', name: 'Зарплата', custom: false },
+  { emoji: '📚', name: 'Репетиторство', custom: false },
+  { emoji: '💸', name: 'Переказ', custom: false },
+];
+
+const defaultBudget = [
+  { name: 'Продукти', limit: 7000, color: '#10b981' },
+  { name: 'Оренда + комуналка', limit: 6500, color: '#6366f1' },
+  { name: "Зв'язок + інтернет", limit: 830, color: '#6366f1' },
+  { name: 'Таксі', limit: 500, color: '#f59e0b' },
+  { name: 'Куріння', limit: 2900, color: '#ef4444' },
+  { name: 'Кафе / розваги', limit: 1000, color: '#f59e0b' },
+  { name: 'Непередбачене', limit: 1000, color: '#6b6b8a' },
+];
+
+function load(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
+}
+function save(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+
+let state = load('dk_state', {
+  debts: { privat: INITIAL.privat, mono: INITIAL.mono, pumb: INITIAL.pumb },
+  paid: { privat: 0, mono: 0, pumb: 0 },
+  log: [], budget: defaultBudget,
+  notes: { 1: '', 2: '', 3: '' },
+  categories: []
+});
+if (!state.categories) state.categories = [];
+
+let modalMode = null, modalBank = null;
+
+function fmt(n) { return Math.round(n).toLocaleString('uk-UA') + ' ₴'; }
+function allCategories() { return [...DEFAULT_CATS, ...state.categories]; }
+
+function buildCatOptions(type) {
+  if (type === 'payoff') return '<option value="погашення">💳 Погашення кредиту</option>';
+  const incomeNames = ['Зарплата','Репетиторство','Переказ'];
+  const expenseHide = ['Зарплата','Репетиторство'];
+  return allCategories()
+    .filter(c => type === 'income' ? (incomeNames.includes(c.name) || c.custom) : !expenseHide.includes(c.name))
+    .map(c => `<option value="${c.name}">${c.emoji} ${c.name}</option>`)
+    .join('');
+}
+
+function renderCategories() {
+  const grid = document.getElementById('catGrid');
+  if (!grid) return;
+  grid.innerHTML = allCategories().map(c => {
+    const ci = state.categories.indexOf(c);
+    return `<div class="cat-chip ${c.custom ? '' : 'default'}">
+      <span>${c.emoji} ${c.name}</span>
+      ${c.custom ? `<button class="cat-chip-del" onclick="deleteCategory(${ci})">×</button>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function addCategory() {
+  const emoji = document.getElementById('catEmoji').value.trim() || '📦';
+  const name = document.getElementById('catName').value.trim();
+  if (!name) { showToast('Введи назву!', 'error'); return; }
+  if (allCategories().find(c => c.name.toLowerCase() === name.toLowerCase())) { showToast('Вже є!', 'error'); return; }
+  state.categories.push({ emoji, name, custom: true });
+  document.getElementById('catName').value = '';
+  document.getElementById('catEmoji').value = '📦';
+  save('dk_state', state);
+  renderCategories();
+  showToast('Категорію додано ✓', 'success');
+}
+
+function deleteCategory(i) {
+  state.categories.splice(i, 1);
+  save('dk_state', state);
+  renderCategories();
+  showToast('Видалено', 'success');
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  const d = new Date();
+  a.download = `debt_tracker_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  showToast('✓ JSON збережено!', 'success');
+}
+
+function importData(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const imp = JSON.parse(ev.target.result);
+      if (!imp.debts || !imp.log) throw new Error();
+      if (!imp.categories) imp.categories = [];
+      state = imp;
+      save('dk_state', state);
+      renderAll(); renderCategories();
+      [1,2,3].forEach(i => { const el = document.getElementById('note'+i); if(el && state.notes && state.notes[i]) el.value = state.notes[i]; });
+      showToast('✓ Дані відновлено!', 'success');
+    } catch { showToast('Помилка файлу!', 'error'); }
+    e.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function resetData() {
+  if (!confirm('Скинути ВСІ дані? Незворотньо!\n\nСпочатку збережи JSON.')) return;
+  state = { debts: {...INITIAL}, paid: {privat:0,mono:0,pumb:0}, log: [], budget: defaultBudget, notes: {1:'',2:'',3:''}, categories: [] };
+  save('dk_state', state);
+  document.getElementById('celebrate').classList.remove('show','shown');
+  renderAll(); renderCategories();
+  showToast('Скинуто', 'success');
+}
+
+function renderAll() {
+  let totalDebt = 0, totalInitial = 0, totalPaid = 0;
+  ['privat','mono','pumb'].forEach(b => {
+    // Автоматичний розрахунок: борг = початковий - (всі надходження - всі витрати)
+    let income = 0, expense = 0;
+    state.log.forEach(e => {
+      if (e.bank !== b) return;
+      if (e.type === 'income') income += e.amount;
+      if (e.type === 'expense') expense += e.amount;
+    });
+    const netPayoff = Math.max(0, income - expense); // скільки реально погашено
+    const debt = Math.max(0, INITIAL[b] - netPayoff);
+    const paid = Math.min(INITIAL[b], netPayoff);
+
+    totalDebt += debt; totalInitial += INITIAL[b]; totalPaid += paid;
+
+    const debtEl = document.getElementById('debt-'+b);
+    if (debt <= 0) { debtEl.textContent = 'ЗАКРИТО ✓'; debtEl.className = 'debt-val zero'; }
+    else { debtEl.textContent = fmt(debt); debtEl.className = 'debt-val '+b; }
+    document.getElementById('bar-'+b).style.width = Math.min(100,(paid/INITIAL[b])*100)+'%';
+    document.getElementById('paid-'+b).textContent = fmt(paid);
+  });
+  document.getElementById('totalDebt').textContent = fmt(totalDebt);
+  document.getElementById('totalDebt').className = 'total-amount'+(totalDebt<=0?' zero':totalDebt<20000?' low':'');
+  document.getElementById('initialDebt').textContent = fmt(totalInitial);
+  if (totalPaid > 0) document.getElementById('freedAmount').textContent = '✓ Погашено: '+fmt(totalPaid);
+  document.getElementById('overallBar').style.width = Math.min(100,(totalPaid/totalInitial)*100)+'%';
+  const urgentBadge = document.getElementById('urgentBadge');
+  if (new Date() > new Date('2026-05-25')) urgentBadge.style.display = 'none';
+  // hide urgent if privat net paid >= initial
+  const privIncome = state.log.filter(e=>e.bank==='privat'&&e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const privExpense = state.log.filter(e=>e.bank==='privat'&&e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  if (Math.max(0,privIncome-privExpense) >= INITIAL.privat) urgentBadge.style.display = 'none';
+  renderLog(); renderBudget(); renderPlanSteps();
+  save('dk_state', state);
+}
+
+function renderLog() {
+  const list = document.getElementById('logList');
+  if (!state.log.length) { list.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>Операцій ще немає!</div>'; return; }
+  const iconBg = { income:'rgba(16,185,129,0.15)', expense:'rgba(239,68,68,0.15)' };
+  list.innerHTML = [...state.log].reverse().map((e, ri) => {
+    const i = state.log.length-1-ri;
+    const sign = e.type==='income'?'+':'−';
+    const cls = e.type==='income'?'pos':e.type==='payoff'?'payoff':'neg';
+    const cat = allCategories().find(c=>c.name===e.category);
+    const icon = cat ? cat.emoji : '•';
+    const d = new Date(e.ts);
+    const ds = d.toLocaleDateString('uk-UA',{day:'numeric',month:'short'})+' '+d.toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="log-entry">
+      <div class="log-icon" style="background:${iconBg[e.type]}">${icon}</div>
+      <div class="log-body">
+        <div class="log-desc">${e.comment||e.category}</div>
+        <div class="log-meta">${ds} · <span class="log-bank-tag ${e.bank}">${BANK_LABELS[e.bank]}</span></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <div class="log-amount ${cls}">${sign}${fmt(e.amount)}</div>
+        <button class="delete-btn" onclick="deleteLog(${i})">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderBudget() {
+  const budget = state.budget;
+  const spent = {};
+  budget.forEach(b => spent[b.name] = 0);
+  const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  let monthIncome = 0;
+  state.log.forEach(e => {
+    if (new Date(e.ts) < monthStart) return;
+    if (e.type==='income') { monthIncome += e.amount; return; }
+    if (e.type==='payoff') return;
+    budget.forEach(b => {
+      const bk = b.name.toLowerCase().split(' ')[0];
+      const ek = (e.category||'').toLowerCase();
+      if (ek.includes(bk)||bk.includes(ek.split(' ')[0])) spent[b.name] = (spent[b.name]||0)+e.amount;
+    });
+  });
+  document.getElementById('monthIncome').textContent = fmt(monthIncome);
+  const totalSpent = Object.values(spent).reduce((a,b)=>a+b,0);
+  const surplus = monthIncome - totalSpent;
+  const surEl = document.getElementById('budgetSurplus');
+  surEl.textContent = fmt(Math.max(0,surplus));
+  surEl.style.color = surplus>30000?'var(--green)':surplus>10000?'var(--amber)':'var(--red)';
+  document.getElementById('budgetItems').innerHTML = budget.map(b => {
+    const s = spent[b.name]||0; const pct = Math.min(100,(s/b.limit)*100); const over = s>b.limit;
+    return `<div class="budget-item"><div class="budget-row"><span class="budget-name">${b.name}</span><span class="budget-val" style="color:${over?'var(--red)':b.color}">${fmt(s)} / ${fmt(b.limit)}</span></div><div class="budget-bar-bg"><div class="budget-bar-fill" style="width:${pct}%;background:${over?'var(--red)':b.color}"></div></div></div>`;
+  }).join('');
+  document.getElementById('budgetEditor').innerHTML = budget.map((b,i)=>`<div style="margin-bottom:10px"><label class="form-label">${b.name}</label><input class="form-input" type="number" id="blimit_${i}" value="${b.limit}" style="font-size:14px;padding:8px 12px"></div>`).join('');
+}
+
+function saveBudget() {
+  state.budget.forEach((b,i)=>{ const el=document.getElementById('blimit_'+i); if(el) b.limit=parseFloat(el.value)||b.limit; });
+  save('dk_state',state); showToast('Ліміти збережено ✓','success'); renderAll();
+}
+
+function getDebt(b) {
+  const income = state.log.filter(e=>e.bank===b&&e.type==='income').reduce((s,e)=>s+e.amount,0);
+  const expense = state.log.filter(e=>e.bank===b&&e.type==='expense').reduce((s,e)=>s+e.amount,0);
+  return Math.max(0, INITIAL[b] - Math.max(0, income - expense));
+}
+
+function renderPlanSteps() {
+  const dPrivat=getDebt('privat'), dMono=getDebt('mono'), dPumb=getDebt('pumb');
+  const allClosed = dPrivat<=0&&dMono<=0&&dPumb<=0;
+  const s1=document.getElementById('step1num'), s2=document.getElementById('step2num'), s3=document.getElementById('step3num');
+  if(dPrivat<=0&&dPumb<=0){s1.className='step-num done';s1.textContent='✓';}else{s1.className='step-num active';s1.textContent='1';}
+  if(dMono<=0){s2.className='step-num done';s2.textContent='✓';}else if(dPrivat<=0&&dPumb<=0){s2.className='step-num active';s2.textContent='2';}else{s2.className='step-num future';s2.textContent='2';}
+  if(allClosed){s3.className='step-num done';s3.textContent='✓';}else{s3.className='step-num future';s3.textContent='3';}
+  if(allClosed){ const cel=document.getElementById('celebrate'); if(!cel.classList.contains('shown')){cel.classList.add('show','shown');document.getElementById('celebrateTitle').textContent='🎉 ВІЛЬНИЙ!';document.getElementById('celebrateSub').textContent='Євгене, всі три кредити закриті!\nЗагальний борг: 0 ₴\nТепер відкладай 44 000 ₴/міс на себе.';}}
+}
+
+function openModal(type, bank) {
+  modalMode=type; modalBank=bank;
+  const titles={income:'+ Надходження',expense:'− Витрата'};
+  const colors={income:'green',expense:'red'};
+  document.getElementById('modalTitle').textContent=titles[type]+' — '+BANK_LABELS[bank];
+  document.getElementById('modalConfirm').className='btn-confirm '+colors[type];
+  document.getElementById('modalConfirm').textContent=type==='income'?'Записати надходження':'Записати витрату';
+  document.getElementById('modalAmount').value='';
+  document.getElementById('modalComment').value='';
+  document.getElementById('modalCategory').innerHTML=buildCatOptions(type);
+  document.getElementById('modalOverlay').classList.add('open');
+  setTimeout(()=>document.getElementById('modalAmount').focus(),300);
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
+function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
+
+function confirmModal() {
+  const amount=parseFloat(document.getElementById('modalAmount').value);
+  if(!amount||amount<=0){showToast('Введи суму!','error');return;}
+  const category=document.getElementById('modalCategory').value;
+  const comment=document.getElementById('modalComment').value.trim();
+  state.log.push({type:modalMode,bank:modalBank,amount,category,comment,ts:Date.now()});
+  showToast((modalMode==='income'?'✓ Надходження ':'✓ Витрата ')+fmt(amount),'success');
+  closeModal(); renderAll();
+}
+
+function deleteLog(i) {
+  const e=state.log[i]; if(!e)return;
+  state.log.splice(i,1); renderAll(); showToast('Видалено','success');
+}
+
+function showToast(msg,type){
+  const t=document.getElementById('toast'); t.textContent=msg; t.className='toast '+type; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+function savePlanNotes(){
+  [1,2,3].forEach(i=>{const el=document.getElementById('note'+i);if(el)state.notes[i]=el.value;});
+  save('dk_state',state); showToast('Нотатки збережено ✓','success');
+}
+
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-'+tab.dataset.tab).classList.add('active');
+    if(tab.dataset.tab==='settings') renderCategories();
+  });
+});
+
+const styleEl=document.createElement('style');
+styleEl.textContent=`.tab[data-tab="settings"].active{background:rgba(107,107,138,0.15);color:var(--text)}`;
+document.head.appendChild(styleEl);
+
+[1,2,3].forEach(i=>{const el=document.getElementById('note'+i);if(el&&state.notes&&state.notes[i])el.value=state.notes[i];});
+renderAll();
+</script>
+</html>
