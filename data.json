@@ -1,0 +1,26 @@
+{
+  "debts": {
+    "privat": 26274,
+    "mono": 29960,
+    "pumb": 11294
+  },
+  "paid": {
+    "privat": 0,
+    "mono": 0,
+    "pumb": 0
+  },
+  "log": [],
+  "budget": [
+    { "name": "Продукти", "limit": 7000, "color": "#10b981" },
+    { "name": "Оренда + комуналка", "limit": 6500, "color": "#6366f1" },
+    { "name": "Зв'язок + інтернет", "limit": 830, "color": "#6366f1" },
+    { "name": "Таксі", "limit": 500, "color": "#f59e0b" },
+    { "name": "Куріння", "limit": 2900, "color": "#ef4444" },
+    { "name": "Кафе / розваги", "limit": 1000, "color": "#f59e0b" },
+    { "name": "Непередбачене", "limit": 1000, "color": "#6b6b8a" }
+  ],
+  "notes": { "1": "", "2": "", "3": "" },
+  "categories": [],
+  "mono_last_sync": null,
+  "mono_processed_ids": []
+}

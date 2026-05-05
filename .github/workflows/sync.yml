@@ -1,0 +1,37 @@
+name: Sync Monobank
+
+on:
+  schedule:
+    # Кожні 4 години
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+    # Дозволяє запустити вручну з GitHub UI одним кліком
+
+permissions:
+  contents: write   # потрібно щоб пушити оновлений data.json
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout репозиторію
+        uses: actions/checkout@v4
+
+      - name: Встановити Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Запустити синхронізацію з Моно
+        env:
+          MONO_TOKEN: ${{ secrets.MONO_TOKEN }}
+        run: python fetch_mono.py
+
+      - name: Зберегти оновлений data.json
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git diff --staged --quiet || git commit -m "sync: monobank $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push
